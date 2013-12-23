@@ -1,0 +1,25 @@
+.ajax-upload{
+	position: fixed;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100%;
+	z-index: 10000;
+	background-color: rgba(200,200,200,0.7);
+	display: block;
+	visibility: visible;
+}
+.ajax-upload .marco{
+	margin: 20px;
+	border: 4px dashed #8E8E8E;
+	position: relative;
+	height: 100%;
+    color: #525252;
+    font-size: 300%;
+    height: 100%;
+    text-shadow: 0 1px 0 #FFFFFF;
+}
+.hide{
+	display: none;
+	visibility: hidden;
+}
