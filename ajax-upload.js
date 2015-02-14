@@ -48,6 +48,7 @@ Object.prototype.merge = function(newObject)
 			this[item] = newObject[item];
 		}
 	}
+	return this;
 };
 /*Object.prototype.mergeRecursive(obj1, obj2) {
 
@@ -76,6 +77,7 @@ Object.prototype.merge = function(newObject)
 	var FileUpload = function(file)
 	{
 		this.file = file;
+		return thiis;
 	}
 	FileUpload.prototype.bytesMegas = function(){
 		return Math.round((this.file.size/1024)*100)/100;
@@ -94,7 +96,6 @@ Object.prototype.merge = function(newObject)
 
 	var Element = function(objElem)
 	{
-
 		this.objElem = objElem;
 		this.element = null;
 		if(!!objElem.tag)
@@ -139,21 +140,11 @@ Object.prototype.merge = function(newObject)
 	};
 
 	var defaultSetting = {
-		element : document
+		element : document,
+		debug: false
 	};
 
-	var AjaxUpload = function(settings)
-	{
-		var settings = typeof(settings)=="object"?defaultSetting.merge(settings):defaultSetting;
-
-		
-		// var paarent = 			var elem = elem || document;
-		// var cont = App.nElem('contenedor');
-		// var mrco = App.nElem('marco');
-
-	};
-
-	AjaxUpload.prototype.elements = [
+	var defaultElements = [
 		{
 			tag: 'div',
 				attr:{
@@ -172,6 +163,36 @@ Object.prototype.merge = function(newObject)
 			}
 		}
 	];
+
+	var AjaxUpload = function(settings)
+	{
+		this.settings = typeof(settings)=="object"?defaultSetting.merge(settings):defaultSetting;
+		this.parent = this.getParent();
+
+		console.log(this.parent)
+		// var paarent = 			var elem = elem || document;
+		// var cont = App.nElem('contenedor');
+		// var mrco = App.nElem('marco');
+
+	};
+
+	AjaxUpload.prototype.getParent = function()
+	{
+
+		var element = this.settings.element;
+
+		if (typeof(element)=='string')
+		{
+			var element = document.querySelector(element);
+		}
+
+		if(element == null && !!this.settings.debug)
+		{
+			console.log("No se encontro un Objeto Paadre")
+		}
+
+		return element;
+	};
 
 
 
@@ -318,8 +339,12 @@ Object.prototype.merge = function(newObject)
 	{ 
 		_("status").innerHTML = "Upload Aborted";
 	}
-	_w.ajaxUpload = function(url){
-		App.init()
+
+
+	_w.ajaxUpload = function(settings)
+	{
+		var ajaxUploadObject = new AjaxUpload(settings);
+		//App.init()
 	};
 })(window);
 
