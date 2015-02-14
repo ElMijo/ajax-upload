@@ -1,25 +1,31 @@
-.ajax-upload{
-	position: fixed;
-	top: 0px;
-	left: 0px;
-	width: 100%;
-	height: 100%;
-	z-index: 10000;
-	background-color: rgba(200,200,200,0.7);
-	display: block;
-	visibility: visible;
+#ajax-upload
+{
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: block;
+    visibility: visible;
 }
-.ajax-upload .marco{
-	margin: 20px;
+#ajax-upload-marco
+{
+    position: absolute;
+    top: 20px;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+}
+#ajax-upload.default{background-color: rgba(200,200,200,0.7);}
+#ajax-upload.default #ajax-upload-marco
+{
 	border: 4px dashed #8E8E8E;
-	position: relative;
-	height: 100%;
     color: #525252;
     font-size: 300%;
-    height: 100%;
     text-shadow: 0 1px 0 #FFFFFF;
 }
-.hide{
+#ajax-upload.hide{
 	display: none;
 	visibility: hidden;
 }
