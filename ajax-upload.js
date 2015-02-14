@@ -50,28 +50,7 @@ Object.prototype.merge = function(newObject)
     }
     return this;
 };
-/*Object.prototype.mergeRecursive(obj1, obj2) {
 
-  for (var p in obj2) {
-    try {
-      // Property in destination object set; update its value.
-      if ( obj2[p].constructor==Object ) {
-        obj1[p] = MergeRecursive(obj1[p], obj2[p]);
-
-      } else {
-        obj1[p] = obj2[p];
-
-      }
-
-    } catch(e) {
-      // Property in destination object not set; create it and set its value.
-      obj1[p] = obj2[p];
-
-    }
-  }
-
-  return obj1;
-}*/
 (function(_w){
 
 
@@ -98,12 +77,56 @@ Object.prototype.merge = function(newObject)
             }
     };
 
+    var uploadzone = null;
+
+    var dragAndDropStatus = false;
+
+    var stopEvent = function(event)
+    {
+        if (event.preventDefault)
+        {
+            event.preventDefault();
+        }
+        event.dataTransfer.dropEffect = 'copy';
+        return false; 
+    };
+
+    var classStatus = function(status)
+    {
+        var status     = status|| false;
+        var classList  = uploadzone.classList;
+        uploadzone.classList[!!status?"add":"remove"]("hide");
+        return false;
+    };
 
     var FileUpload = function(file)
     {
         this.file = file;
         return this;
     }
+
+    var dragEnter = function(event)
+    {
+        stopEvent(event);
+        classStatus();
+        return false;
+    };
+    // var dragLeave = function(event)
+    // {
+    //     stopEvent(event);
+    //     classStatus(true);
+    //     return false;
+    // };
+
+
+    var mouseOut = function(event)
+    {
+        classStatus(true);
+        dragAndDropStatus = false;
+        console.log('mouseout')
+    }
+
+
     FileUpload.prototype.bytesMegas = function()
     {
         return Math.round((this.file.size/1024)*100)/100;
@@ -181,15 +204,24 @@ Object.prototype.merge = function(newObject)
         {
             this.settings = typeof(settings)=="object"?defaultSetting.merge(settings):defaultSetting;
             this.parent = this.getParent();
-            this.uploadzone = this.getUploadZone();        
+            uploadzone = this.getUploadZone();
+
+            addEvent(this.parent,"dragenter",dragEnter);
+            addEvent(this.parent,"mouseout",mouseOut);
+
+            //addEvent(this.parent,"dragleave",dragLeave);
+            //addEvent(this.parent,'dragend', function(){console.log('dragend')});
+
+
+                //             elem.addEventListener("dragenter", App.dragEnter, false);
+                // elem.addEventListener("dragleave", App.leave, false);
+                // elem.addEventListener("drop", App.drop, false);
+                // elem.addEventListener("dragover",App.over,false);
+            //console.log(this.parentUploadzone)
+            //this.parentUploadzone.appendChild(this.uploadzone);   
         }
 
         return ajaxupload;
-
-        // var paarent =            var elem = elem || document;
-        // var cont = App.nElem('contenedor');
-        // var mrco = App.nElem('marco');
-
     };
 
 
@@ -224,17 +256,14 @@ Object.prototype.merge = function(newObject)
     AjaxUpload.prototype.getUploadZone = function()
     {
         var uploadzone = new Element(uploadZoneElement);
-        console.log(uploadzone)
+        var parentUploadzone = this.parent == document?document.body:this.parent;
 
+        parentUploadzone.appendChild(uploadzone);
+
+        return uploadzone;
     };
-/*  AjaxUpload.prototype.getElement = function(name)
-    {
-        var data = this.elementos[name]||null, elem = null;
-        if(!!data)
-        {
-            elem = document.createElement(data[0]);
-        }
-    }*/
+
+
 
 
     var App = {
@@ -283,7 +312,7 @@ Object.prototype.merge = function(newObject)
             }
             return false;
         },
-/*      bytesMegas:function(num){return Math.round((num/1024)*100)/100;},
+      bytesMegas:function(num){return Math.round((num/1024)*100)/100;},
         fileExtencion:function(nm){ return nm.split(".").pop();},
         fileInfo:function(file){
             return {
@@ -292,7 +321,7 @@ Object.prototype.merge = function(newObject)
                 type : file.type,
                 extn : App.fileExtencion(file.name)
             };
-        },*/
+        },
         classStatus:function(stt){
             var stt        = stt|| false;
             var elem       = document.querySelector('#ajax-upload');
