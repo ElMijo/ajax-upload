@@ -79,15 +79,17 @@ Object.prototype.merge = function(newObject)
 
     var uploadzone = null;
 
-    var dragAndDropStatus = false;
-
     var stopEvent = function(event)
     {
-        if (event.preventDefault)
+        if (!!event.preventDefault)
         {
             event.preventDefault();
         }
-        event.dataTransfer.dropEffect = 'copy';
+        if(!!event.dataTransfer)
+        {
+            event.dataTransfer.dropEffect = 'copy';
+        }
+        
         return false; 
     };
 
@@ -99,34 +101,70 @@ Object.prototype.merge = function(newObject)
         return false;
     };
 
+    var ajaxObject = function()
+    {
+        var xhr = false;
+
+        if (_w.XMLHttpRequest)
+        { 
+            xhr = new XMLHttpRequest();
+        } 
+        else if (_w.ActiveXObject)
+        {
+            try
+            {
+                xhr = new ActiveXObject("MSXML2.XMLHTTP");
+            } 
+            catch (e)
+            {
+                try
+                {
+                    xhr = new ActiveXObject("Microsoft.XMLHTTP");
+                } 
+                catch (e) {}
+            }
+        }
+        if(!!xhr)
+        {
+            xhr.isXHR2 = !!xhr.upload;
+        }
+
+        return xhr;
+    }
+
+    var ajaxUpload = function(files,settings)
+    {
+        var files = files || [];
+        for(I=0;I<files.length;I++)
+        {
+            var formdata = new FormData(); 
+            var ajax = new ajaxObject();     
+            var file = new FileUpload(files[I])
+
+            formdata.append("X_FILENAME", files[I]);
+            if(!!ajax.isXHR2)
+            {
+                ajax.upload.addEventListener("progress", function(e){}, false);
+                ajax.addEventListener("load", function(e){}, false); 
+                ajax.addEventListener("error", function(e){}, false); 
+                ajax.addEventListener("abort", function(e){}, false);                
+            }
+                //console.log(App.fileInfo(files[$I]));
+                // 
+                //  
+ 
+                // ajax.open("POST", "file_upload_parser.php"); 
+                // ajax.send(formdata);    
+        }
+        console.log(settings)
+    }
+
+
     var FileUpload = function(file)
     {
         this.file = file;
         return this;
     }
-
-    var dragEnter = function(event)
-    {
-        stopEvent(event);
-        classStatus();
-        return false;
-    };
-    // var dragLeave = function(event)
-    // {
-    //     stopEvent(event);
-    //     classStatus(true);
-    //     return false;
-    // };
-
-
-    var mouseOut = function(event)
-    {
-        classStatus(true);
-        dragAndDropStatus = false;
-        console.log('mouseout')
-    }
-
-
     FileUpload.prototype.bytesMegas = function()
     {
         return Math.round((this.file.size/1024)*100)/100;
@@ -198,7 +236,7 @@ Object.prototype.merge = function(newObject)
 
     var AjaxUpload = function(settings)
     {
-        var ajaxupload = false;
+        var ajaxupload = false, self = this;
 
         if(!!this.validateBrowser())
         {
@@ -206,25 +244,21 @@ Object.prototype.merge = function(newObject)
             this.parent = this.getParent();
             uploadzone = this.getUploadZone();
 
-            addEvent(this.parent,"dragenter",dragEnter);
-            addEvent(this.parent,"mouseout",mouseOut);
-
-            //addEvent(this.parent,"dragleave",dragLeave);
-            //addEvent(this.parent,'dragend', function(){console.log('dragend')});
-
-
-                //             elem.addEventListener("dragenter", App.dragEnter, false);
-                // elem.addEventListener("dragleave", App.leave, false);
-                // elem.addEventListener("drop", App.drop, false);
-                // elem.addEventListener("dragover",App.over,false);
-            //console.log(this.parentUploadzone)
-            //this.parentUploadzone.appendChild(this.uploadzone);   
+            addEvent(this.parent,"dragenter",this.dragEnter);
+            addEvent(this.parent,"dragover",this.dragEnter);
+            addEvent(this.parent,"dragleave",this.dragLeave);
+            //addEvent(this.parent,"mouseout",this.dragLeave);
+            addEvent(this.parent,"drop",function(event){
+                stopEvent(event);
+                classStatus(true);
+                var files = event.target.files || event.dataTransfer.files;
+                ajaxUpload(files,self.settings)
+                return false;
+            }); 
         }
 
         return ajaxupload;
     };
-
-
     AjaxUpload.prototype.validateBrowser = function()
     {
         var isValid = _w.File && _w.FileList && _w.FileReader;
@@ -234,7 +268,6 @@ Object.prototype.merge = function(newObject)
         }
         return isValid;
     };
-
     AjaxUpload.prototype.getParent = function()
     {
         var element = this.settings.element;
@@ -251,8 +284,6 @@ Object.prototype.merge = function(newObject)
 
         return element;
     };
-
-
     AjaxUpload.prototype.getUploadZone = function()
     {
         var uploadzone = new Element(uploadZoneElement);
@@ -262,9 +293,22 @@ Object.prototype.merge = function(newObject)
 
         return uploadzone;
     };
+    AjaxUpload.prototype.dragEnter = function(event)
+    {
+        stopEvent(event);
+        classStatus();
+        return false;
+    };
+    AjaxUpload.prototype.dragLeave = function(event)
+    {
+        stopEvent(event);
+        classStatus(true);
+        return false;
+    };
+    AjaxUpload.prototype.drop = function(event)
+    {
 
-
-
+    }
 
     var App = {
         elementos:{
