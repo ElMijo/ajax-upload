@@ -63,14 +63,27 @@
     height: inherit;
     line-height: 40px;
     text-align: center;
+}
+#caja-load .item-load .close-item-load span
+{
     cursor: pointer;
 }
-#caja-load .item-load .close-item-load:hover,
-#caja-load .item-load .close-item-load:active,
-#caja-load .item-load .close-item-load:focus
+#caja-load .item-load .close-item-load span:hover,
+#caja-load .item-load .close-item-load span:active,
+#caja-load .item-load .close-item-load span:focus
 {
     color: #666666;
 }
+
+#caja-load .item-load .close-item-load.success
+{
+    color: #3DB034;
+}
+#caja-load .item-load .close-item-load.error
+{
+    color: #B03434;
+}
+
 
 #caja-load .item-load .content-item-load > p
 {
