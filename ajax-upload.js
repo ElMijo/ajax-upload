@@ -58,7 +58,8 @@ Object.prototype.merge = function(newObject)
         debug: false,
         element : document,
         acceptedTypes:[],
-        filesizemax : 2048
+        uploadVerbose : true,
+        fieldname : 'X_FILENAME'
     };
 
     var uploadZoneElement = {
@@ -120,7 +121,10 @@ Object.prototype.merge = function(newObject)
                 attr:{
                     class:'close-item-load'
                 },
-                content:'✗'
+                content:{
+                    tag:'span',
+                    content:'✗'
+                }
             }
         ]        
     };
@@ -344,154 +348,197 @@ Object.prototype.merge = function(newObject)
         classStatus(true);
         return false;
     };
+
     AjaxUpload.prototype.upload = function(files)
     {
         var self = this;
         for(I=0;I<files.length;I++)
         {
             var file = new FileUpload(files[I]);
-            new this.upload.uploading(this.settings,file.getFileInfo());
-/*          
-            var formdata = new FormData(); 
-            var ajax = new ajaxObject();     
-            
-            var cajauploaditem = new Element(cajaUploadItem);
-            var cajauploaditemstatus = cajauploaditem.querySelector('#barstatus');
 
-            console.log(new this.upload.uploading())
-
-            cajauploaditem.querySelector('p').innerHTML = file.getFileInfo().name;
-            cajauploaditemstatus.style.width = '1%';
-
-            formdata.append("X_FILENAME", files[I]);
-
-            if(!!ajax.isXHR2)
+            if(!!this.validateFile(file.getFileInfo()))
             {
-                ajax.addEventListener("loadstart", function(event){
-                    
-                    cajaupload.appendChild(cajauploaditem);
-
-                }, false);
-
-
-                ajax.upload.addEventListener("progress", function(event){
-                    if (event.lengthComputable)
-                    {
-                        cajauploaditemstatus.style.width = ((event.loaded / event.total) * 100) + '%';
-                    }
-                }, false);
-                ajax.addEventListener("error", function(a,b,c){
-                    console.log(a,b,c)
-                }, false); 
-                ajax.addEventListener("abort", function(a,b,c){
-                    console.log(a,b,c)
-                }, false);                 
-                // 
-                ajax.addEventListener("timeout", function(a,b,c){
-                    console.log(a,b,c)
-                }, false);                 
-                ajax.addEventListener("load", function(event){
-                    if (this.status == 200) {
-                        console.log(this.response);
-                    }
-                }, false);
-                ajax.addEventListener("loadend", function(event){
-                    console.log(event)
-                }, false); 
-               
-            }
-            ajax.open("POST", this.settings.url);
-            ajax.send(formdata);
-            */    
+                var uploaditem = new AjaxUploadItem(this.settings,file.getFileInfo());
+                uploaditem.sendFormData();
+            } 
         }
     };
 
-    AjaxUpload.prototype.upload.uploading = function(settings,file)
+    AjaxUpload.prototype.validateFile = function(validatefile)
     {
-            var formdata = new FormData(); 
-            var ajax = new ajaxObject();     
-            var cajauploaditem = new Element(cajaUploadItem);
-            var cajauploaditemstatus = cajauploaditem.querySelector('#barstatus');
+        var validatefile = true;
 
-            cajauploaditem.querySelector('p').innerHTML = file.name;
-            cajauploaditemstatus.style.width = '1%';
+        if(!!this.settings.acceptedTypes.length)
+        {
+            validatefile = file.type in this.settings.acceptedTypes;
+        }
 
-            formdata.append("X_FILENAME", file.ofile);
+        return validatefile;
+    }
 
-            if(!!ajax.isXHR2)
+    var AjaxUploadItem = function(settings,file)
+    {
+        this.ajax = new ajaxObject();
+        this.ajax.uploadItem = this;
+        this.ajax.formdata = new FormData(); 
+        this.ajax.formdata.append(settings.fieldname, file.ofile);
+        this.ajax.open("POST", settings.url);
+        this.ajax.cajauploaditem = null;
+        this.ajax.cajauploaditemstatus = null;
+        this.ajax.cajauploaditemclose = null;
+        this.ajax.uploadVerbose = settings.uploadVerbose;
+
+        this.initCajauploaditem(settings.uploadVerbose,file.name);
+
+        this.ajax.addEventListener("loadstart",this.loadStartEvent,false);
+
+        if(!!this.ajax.isXHR2)
+        {
+            this.ajax.upload.addEventListener("progress",this.progressEvent,false);
+            this.ajax.upload.ajax = this.ajax;
+        }
+        else
+        {
+            this.ajax.addEventListener("progress",this.loadStartEvent,false);
+        }
+
+        this.ajax.addEventListener("error",this.errorEvent,false);
+        this.ajax.addEventListener("abort",this.abortEvent,false);
+        this.ajax.addEventListener("timeout",this.timeoutEvent,false);
+        this.ajax.addEventListener("load",this.loadEvent,false);
+        this.ajax.addEventListener("loadend",this.loadendEvent,false);
+
+        this.ajax.sendFormData = function(){this.send(this.formdata)};
+        this.ajax.statusStyle = this.statusStyle;
+
+        return this.ajax;
+    }
+    AjaxUploadItem.prototype.initCajauploaditem = function(verbose,filename)
+    {
+        if (!!verbose)
+        {
+            var ajax = this.ajax;
+            ajax.cajauploaditem = new Element(this.cajaUploadItemObject);
+            ajax.cajauploaditemstatus = ajax.cajauploaditem.querySelector('#barstatus');
+            ajax.cajauploaditemclose = ajax.cajauploaditem.querySelector('.close-item-load');
+            ajax.cajauploaditem.querySelector('p').innerHTML = filename;
+            ajax.cajauploaditemstatus.style.width = '1%';
+            addEvent(ajax.cajauploaditem.querySelector('.close-item-load span'),'click',function(event){
+                event.preventDefault();
+                ajax.abort();
+            });
+
+        }
+    }
+
+    AjaxUploadItem.prototype.loadStartEvent = function(event)
+    {
+        if(!!this.uploadVerbose)
+        {
+            cajaupload.appendChild(this.cajauploaditem);
+        }
+    }
+
+    AjaxUploadItem.prototype.progressEvent = function(event)
+    {
+        if (!!this.ajax.uploadVerbose&&!!event.lengthComputable)
+        {
+            this.ajax.cajauploaditemstatus.style.width = ((event.loaded / event.total) * 100) + '%';
+        }
+    };
+
+    AjaxUploadItem.prototype.errorEvent = function(event)
+    {
+        if(!!this.uploadVerbose)
+        {
+            this.statusStyle('error');
+        }
+    };
+    AjaxUploadItem.prototype.abortEvent = function(event)
+    {
+        if(!!this.uploadVerbose)
+        {
+            this.statusStyle('error');
+        }
+    };
+    AjaxUploadItem.prototype.timeoutEvent = function(event)
+    {
+        if(!!this.uploadVerbose)
+        {
+            this.statusStyle('warning');
+        }
+    };
+    AjaxUploadItem.prototype.loadEvent = function(event)
+    {
+        if(!!this.uploadVerbose)
+        {
+            this.statusStyle(this.status == 200?'success':'error');
+        }
+    };
+    AjaxUploadItem.prototype.loadendEvent = function(event)
+    {
+        var cajauploaditem = this.cajauploaditem;
+        var uploadVerbose = this.uploadVerbose;
+        setTimeout(function(){
+            if(!!uploadVerbose)
             {
-                ajax.addEventListener("loadstart", function(event){
-                    
-                    cajaupload.appendChild(cajauploaditem);
-
-                }, false);
-
-
-                ajax.upload.addEventListener("progress", function(event){
-                    if (event.lengthComputable)
-                    {
-                        cajauploaditemstatus.style.width = ((event.loaded / event.total) * 100) + '%';
-                    }
-                }, false);
-                ajax.addEventListener("error", function(a,b,c){
-                    console.log(a,b,c)
-                }, false); 
-                ajax.addEventListener("abort", function(a,b,c){
-                    console.log(a,b,c)
-                }, false);                 
-                // 
-                ajax.addEventListener("timeout", function(a,b,c){
-                    console.log(a,b,c)
-                }, false);                 
-                ajax.addEventListener("load", function(event){
-                    if (this.status == 200) {
-                        console.log(this.response);
-                    }
-                }, false);
-                ajax.addEventListener("loadend", function(event){
-                    console.log(event)
-                }, false); 
-               
+                cajaupload.removeChild(cajauploaditem);
             }
-            ajax.open("POST", settings.url);
-            ajax.send(formdata);                   
+        },2000);
+    };
+
+    AjaxUploadItem.prototype.statusStyle = function(style)
+    {
+        this.cajauploaditemclose.innerHTML = style == 'success'?'✓':'⊗';
+        this.cajauploaditemclose.classList.add(style);
+        this.cajauploaditemstatus.classList.add(style);
     }
-
-    AjaxUpload.prototype.validatefile = function(file)
-    {
-        console.log(file);
-    }
-
-    AjaxUpload.prototype.loadStartEvent = function(event)
-    {
-
+    AjaxUploadItem.prototype.cajaUploadItemObject = {
+        tag:'div',
+        attr:{
+            class:'item-load'
+        },
+        content:[
+            {
+                tag:'div',
+                attr:{
+                    class:'content-item-load'
+                },
+                content:[
+                    {
+                        tag:'p'
+                    },
+                    {
+                        tag:'div',
+                        attr:{
+                            id:'content-barstatus'
+                        },
+                        content:{
+                            tag:'span',
+                            attr:{
+                                id:'barstatus'
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                tag:'div',
+                attr:{
+                    class:'close-item-load'
+                },
+                content:{
+                    tag:'span',
+                    content:'✗'
+                }
+            }
+        ]        
     };
+/*   
 
-    AjaxUpload.prototype.progressEvent = function(event)
-    {
 
-    };
 
-    AjaxUpload.prototype.errorEvent = function(event)
-    {
-
-    };
-    AjaxUpload.prototype.abortEvent = function(event)
-    {
-
-    };
-    AjaxUpload.prototype.timeoutEvent = function(event)
-    {
-
-    };
-    AjaxUpload.prototype.loadEvent = function(event)
-    {
-
-    };
-    AjaxUpload.prototype.loadendEvent = function(event)
-    {
-
-    };
+*/
 /*    var App = {
         elementos:{
             contenedor : ['div',{id:'ajax-upload',class:"default hide"}],

@@ -83,7 +83,10 @@
 {
     color: #B03434;
 }
-
+#caja-load .item-load .close-item-load.warning
+{
+    color: #B07534;
+}
 
 #caja-load .item-load .content-item-load > p
 {
@@ -109,4 +112,8 @@
 #caja-load .item-load .content-item-load #barstatus.error
 {
     background-color: #B03434;
+}
+#caja-load .item-load .content-item-load #barstatus.warning
+{
+    background-color: #B07534;
 }
