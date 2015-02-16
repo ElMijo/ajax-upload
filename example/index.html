@@ -1,0 +1,20 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="../ajax-upload.css">
+</head>
+<body>
+    <div class="prueba"></div>
+</body>
+</html>
+<script type="text/javascript" src="../ajax-upload.js"></script>
+<script type="text/javascript">
+    var ajaxUploadObject = new ajaxUpload({
+        debug:true,
+        url : 'file_upload_parser.php',
+        delayRemoveItemVerbose : 3000
+    });
+    ajaxUploadObject.on('loadstart',function(event){
+        console.log('loadstart desde el html',event);
+    })
+</script>
