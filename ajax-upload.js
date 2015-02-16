@@ -59,7 +59,8 @@ Object.prototype.merge = function(newObject)
         element : document,
         acceptedTypes:[],
         uploadVerbose : true,
-        fieldname : 'X_FILENAME'
+        fieldname : 'X_FILENAME',
+        delayRemoveItemVerbose: 2000
     };
 
     var uploadZoneElement = {
@@ -85,48 +86,6 @@ Object.prototype.merge = function(newObject)
         attr:{
             id:'caja-load'
         }
-    };
-
-    var cajaUploadItem ={
-        tag:'div',
-        attr:{
-            class:'item-load'
-        },
-        content:[
-            {
-                tag:'div',
-                attr:{
-                    class:'content-item-load'
-                },
-                content:[
-                    {
-                        tag:'p'
-                    },
-                    {
-                        tag:'div',
-                        attr:{
-                            id:'content-barstatus'
-                        },
-                        content:{
-                            tag:'span',
-                            attr:{
-                                id:'barstatus'
-                            }
-                        }
-                    }
-                ]
-            },
-            {
-                tag:'div',
-                attr:{
-                    class:'close-item-load'
-                },
-                content:{
-                    tag:'span',
-                    content:'✗'
-                }
-            }
-        ]        
     };
 
     var uploadzone = null;
@@ -190,6 +149,7 @@ Object.prototype.merge = function(newObject)
         this.originalFile = file;
         return this;
     }
+    
     FileUpload.prototype.bytesMegas = function()
     {
         return Math.round((this.originalFile.size/1024)*100)/100;
@@ -268,14 +228,13 @@ Object.prototype.merge = function(newObject)
         return this;
     };
 
-
-
     var AjaxUpload = function(settings)
     {
         var ajaxupload = false, self = this;
 
         if(!!this.validateBrowser())
         {
+            this.uploadEvents = {};
             this.settings = typeof(settings)=="object"?defaultSetting.merge(settings):defaultSetting;
             this.parent = this.getParent();
             uploadzone = this.getUploadZone();
@@ -288,13 +247,14 @@ Object.prototype.merge = function(newObject)
                 stopEvent(event);
                 classStatus(true);
                 var files = event.target.files || event.dataTransfer.files || [];
-                self.upload(files)
+                self.upload(files,self.uploadEvents)
                 return false;
             }); 
         }
 
         return ajaxupload;
     };
+
     AjaxUpload.prototype.validateBrowser = function()
     {
         var isValid = _w.File && _w.FileList && _w.FileReader && _w.FormData;
@@ -349,16 +309,15 @@ Object.prototype.merge = function(newObject)
         return false;
     };
 
-    AjaxUpload.prototype.upload = function(files)
+    AjaxUpload.prototype.upload = function(files,uploadEvents)
     {
-        var self = this;
         for(I=0;I<files.length;I++)
         {
             var file = new FileUpload(files[I]);
 
             if(!!this.validateFile(file.getFileInfo()))
             {
-                var uploaditem = new AjaxUploadItem(this.settings,file.getFileInfo());
+                var uploaditem = new AjaxUploadItem(this.settings,file.getFileInfo(),uploadEvents);
                 uploaditem.sendFormData();
             } 
         }
@@ -376,7 +335,7 @@ Object.prototype.merge = function(newObject)
         return validatefile;
     }
 
-    var AjaxUploadItem = function(settings,file)
+    var AjaxUploadItem = function(settings,file,uploadEvents)
     {
         this.ajax = new ajaxObject();
         this.ajax.uploadItem = this;
@@ -387,6 +346,8 @@ Object.prototype.merge = function(newObject)
         this.ajax.cajauploaditemstatus = null;
         this.ajax.cajauploaditemclose = null;
         this.ajax.uploadVerbose = settings.uploadVerbose;
+        this.ajax.uploadevents = uploadEvents;
+        this.ajax.delayRemoveItemVerbose = settings.delayRemoveItemVerbose;
 
         this.initCajauploaditem(settings.uploadVerbose,file.name);
 
@@ -427,7 +388,6 @@ Object.prototype.merge = function(newObject)
                 event.preventDefault();
                 ajax.abort();
             });
-
         }
     }
 
@@ -437,6 +397,10 @@ Object.prototype.merge = function(newObject)
         {
             cajaupload.appendChild(this.cajauploaditem);
         }
+        if(!!this.uploadevents.loadstart)
+        {
+            this.uploadevents.loadstart(event);
+        }
     }
 
     AjaxUploadItem.prototype.progressEvent = function(event)
@@ -444,6 +408,10 @@ Object.prototype.merge = function(newObject)
         if (!!this.ajax.uploadVerbose&&!!event.lengthComputable)
         {
             this.ajax.cajauploaditemstatus.style.width = ((event.loaded / event.total) * 100) + '%';
+        }
+        if(!!this.ajax.uploadevents.progress)
+        {
+            this.ajax.uploadevents.progress(event);
         }
     };
 
@@ -453,12 +421,20 @@ Object.prototype.merge = function(newObject)
         {
             this.statusStyle('error');
         }
+        if(!!this.uploadevents.error)
+        {
+            this.uploadevents.error(event);
+        }
     };
     AjaxUploadItem.prototype.abortEvent = function(event)
     {
         if(!!this.uploadVerbose)
         {
             this.statusStyle('error');
+        }
+        if(!!this.uploadevents.abort)
+        {
+            this.uploadevents.abort(event);
         }
     };
     AjaxUploadItem.prototype.timeoutEvent = function(event)
@@ -467,6 +443,10 @@ Object.prototype.merge = function(newObject)
         {
             this.statusStyle('warning');
         }
+        if(!!this.uploadevents.timeout)
+        {
+            this.uploadevents.timeout(event);
+        }
     };
     AjaxUploadItem.prototype.loadEvent = function(event)
     {
@@ -474,17 +454,22 @@ Object.prototype.merge = function(newObject)
         {
             this.statusStyle(this.status == 200?'success':'error');
         }
+        if(!!this.uploadevents.load)
+        {
+           this.uploadevents.load(event);
+        }
     };
     AjaxUploadItem.prototype.loadendEvent = function(event)
     {
-        var cajauploaditem = this.cajauploaditem;
-        var uploadVerbose = this.uploadVerbose;
-        setTimeout(function(){
-            if(!!uploadVerbose)
-            {
-                cajaupload.removeChild(cajauploaditem);
-            }
-        },2000);
+        if(!!this.uploadVerbose)
+        {
+            var cajauploaditem = this.cajauploaditem;
+            setTimeout(function(){cajaupload.removeChild(cajauploaditem);},this.delayRemoveItemVerbose);
+        }
+        if(!!this.uploadevents.loadend)
+        {
+           this.uploadevents. loadend(event);
+        }        
     };
 
     AjaxUploadItem.prototype.statusStyle = function(style)
@@ -534,150 +519,20 @@ Object.prototype.merge = function(newObject)
             }
         ]        
     };
-/*   
-
-
-
-*/
-/*    var App = {
-        elementos:{
-            contenedor : ['div',{id:'ajax-upload',class:"default hide"}],
-            marco:['div',{id:'ajax-upload-marco'},"<center>Suelte Aquí para comenzar a subir</center>"]
-        },
-        nElem : function (nm){
-            var data = App.elementos[nm]||null;
-            var elem = null;
-            if (!!data){
-                elem = document.createElement(data[0]);
-                if(!!data[1]){
-                    for(var item in data[1]){
-                        elem.setAttribute(item,data[1][item]);
-                    }
-                }
-                if(!!data[2]){
-                    switch(typeof(data[2])){
-                        case "string":
-                            elem.innerHTML=data[2]
-                        break;
-                    }
-                    
-                }
-            }
-            return elem;
-        },
-        stop:function(e){
-            if (e.preventDefault) e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-            return false; 
-        },
-        esXHR2 : function(){
-            return !!App.xhr()?App.xhr().upload:false;
-        },
-        XHR: function(){
-            if (_w.XMLHttpRequest){ return new XMLHttpRequest();} 
-            else if (_w.ActiveXObject)
-            {
-                try {return  new ActiveXObject("MSXML2.XMLHTTP");} 
-                catch (e) {
-                    try {return  new ActiveXObject("Microsoft.XMLHTTP");} 
-                    catch (e) {}
-                }
-            }
-            return false;
-        },
-      bytesMegas:function(num){return Math.round((num/1024)*100)/100;},
-        fileExtencion:function(nm){ return nm.split(".").pop();},
-        getFileInfo:function(file){
-            return {
-                name : file.name,
-                size : App.bytesMegas(file.size)+"Mb",
-                type : file.type,
-                extn : App.fileExtencion(file.name)
-            };
-        },
-        classStatus:function(stt){
-            var stt        = stt|| false;
-            var elem       = document.querySelector('#ajax-upload');
-            var classList  = elem.classList;
-            elem.classList[!!stt?"add":"remove"]("hide");
-            return false;
-            //elem.classList[classList.contains('hide')?"remove":"add"]("hide");
-        },
-        leave:function(e){
-            App.stop(e);
-            App.classStatus(true);
-            return false;
-        },
-        over: function(e){
-            App.stop(e);
-            App.classStatus();
-            return false;
-        },
-        hover: function(e) {App.stop(e);App.classStatus();return false;},
-        drop:function(e) {
-            App.stop(e);App.classStatus(true);
-            var files = e.target.files || e.dataTransfer.files;
-            App.upload(files);
-            return false;
-
-        },
-        upload:function(files){
-            var files = files || [];
-            for($I=0;$I<files.length;$I++){
-                var formdata = new FormData(); 
-                var ajax = new App.XHR();
-                console.log(App.getFileInfo(files[$I]));
-                formdata.append("X_FILENAME", files[$I]); 
-                ajax.upload.addEventListener("progress", function(e){}, false); 
-                ajax.addEventListener("load", function(e){}, false); 
-                ajax.addEventListener("error", function(e){}, false); 
-                ajax.addEventListener("abort", function(e){}, false); 
-                ajax.open("POST", "file_upload_parser.php"); 
-                ajax.send(formdata);  
-            }
-        },
-        init:function(elem){
-            var elem = elem || document;
-            var cont = App.nElem('contenedor');
-            var mrco = App.nElem('marco');
-            if(_w.File && _w.FileList && _w.FileReader) {
-                elem.addEventListener("dragenter", App.hover, false);
-                elem.addEventListener("dragleave", App.leave, false);
-                elem.addEventListener("drop", App.drop, false);
-                elem.addEventListener("dragover",App.over,false);
-                document.body.appendChild(cont);
-                cont.appendChild(mrco);
-            }
-
-        }
-
-    };
-
-
-    function progressHandler(event)
-    {
-        _("loaded_n_total").innerHTML = "Uploaded "+event.loaded+" bytes of "+event.total; 
-        var percent = (event.loaded / event.total) * 100; _("progressBar").value = Math.round(percent); 
-        _("status").innerHTML = Math.round(percent)+"% uploaded... please wait";
-    } 
-    function completeHandler(event)
-    { 
-        _("status").innerHTML = event.target.responseText; _("progressBar").value = 0;
-    } 
-    function errorHandler(event)
-    {
-        _("status").innerHTML = "Upload Failed";
-    } 
-    function abortHandler(event)
-    { 
-        _("status").innerHTML = "Upload Aborted";
-    }*/
-
 
     _w.ajaxUpload = function(settings)
     {
         var ajaxUploadObject = new AjaxUpload(settings);
-        //App.init()
+
+        return {
+            on:function(e,fn){
+                if (e in ['loadstart','progress','error','abort','timeout','load','loadend'])
+                {
+                    ajaxUploadObject.eventUpload[e] = fn;
+                }
+                return this;
+            }
+        };
     };
 })(window);
 
